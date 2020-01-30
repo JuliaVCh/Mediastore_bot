@@ -6,9 +6,11 @@ class BotHandler:
     """
     Telegram bot handler able to receive incoming updates using long polling 
     """
-    def __init__(self, token):
+    def __init__(self, token, logfile):
         self.token = token
-        self.api_url = 'https://api.telegram.org/bot{}/'.format(token)
+        self.api_url = f'https://api.telegram.org/bot{token}/'
+        self.file_download_url = f'https://api.telegram.org/file/bot{self.token}/'
+        self.logs = logfile
 
     def get_updates(self, offset=None, timeout=30,\
                     update_types=['message', 'channel_post']):
@@ -19,7 +21,7 @@ class BotHandler:
         except HTTPError as http_err:
             print(f'HTTP error occurred: {http_err}')
         except Exception as err:
-            print(f'Other error occurred: {err}')
+            print(f'Error while getting updates occurred: {err}')
 
         result_json = resp.json()['result']
         
@@ -31,13 +33,24 @@ class BotHandler:
         file = None
         try:
             resp = requests.get(self.api_url + method, params)
-            fileinfo_json = resp.json()
-            file_path = fileinfo_json.get('file_path', 0)
+            
+            if not self.logs is None:
+                self.logs.write('Succesfully recieved File object ')
+            
+            fileinfo = resp.json()['result']
+            file_path = fileinfo.get('file_path', 0)
+            
+            if not self.logs is None:
+                self.logs.write(f'with following file path: {file_path}\n')
+            
             if file_path:
-                file = requests.get(f'https://api.telegram.org/file/bot{self.token}/{file_path}')
+                file = requests.get(self.file_download_url + file_path, stream=True).content
+                
+                if not self.logs is None:
+                    self.logs.write(f"File succesfully downloaded, its size is {fileinfo.get('file_size', 0)} B.\n")
         except HTTPError as http_err:
             print(f'HTTP error occurred: {http_err}')
         except Exception as err:
-            print(f'Other error occurred: {err}')
+            print(f'Error while downloading file occurred: {err}')
         
         return file

@@ -1,0 +1,7 @@
+*credentials.txt
+*.json
+
+temp/
+photos/
+__pycache__/
+.spyproject/
